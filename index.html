@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <title>A Pelican Blog</title>
+        <link rel="stylesheet" href="/theme/css/main.css" />
+        <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="A Pelican Blog Atom Feed" />
+
+        <!--[if IE]>
+            <script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="/">A Pelican Blog </a></h1>
+                <nav><ul>
+                    <li><a href="/category/machine-learning.html">Machine Learning</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="/my-first-project.html">My First Project</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2016-08-06T10:20:00+00:00">
+                Published: 週六 06 八月 2016
+        </abbr>
+
+<p>In <a href="/category/machine-learning.html">Machine Learning</a>.</p>
+
+</footer><!-- /.post-info --><div class="highlight"><pre><span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jul 20 20:25:30 2016</span>
+
+<span class="sd">@author: Noklam</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">## This Project is greatly inspired by the discussion, which help me a lot to </span>
+<span class="c1">## debug and I have give up my original code and follow their structure and </span>
+<span class="c1">## made my own classifier </span>
+<span class="c1">## Especially helpful discussion from vivek_29420285151271 and michael_807478</span>
+<span class="c1">## As I am not a pro-programmer, doesnt develop habit of writing nice function</span>
+<span class="c1">## Their well-written function have helped me a lot to simplify the final </span>
+<span class="c1">## version</span>
+<span class="c1">######Steps:</span>
+<span class="c1"># 1. Remove outlier &quot;TOTAL&quot;</span>
+<span class="c1"># 2. Remove unwanted features</span>
+<span class="c1"># 3. Log transformation</span>
+<span class="c1"># 4. Pipeline</span>
+<span class="c1"># 5. Imputer 0 for NaN, MinMaxScaler</span>
+<span class="c1"># 6. Select K-best , K=8</span>
+<span class="c1"># 7. PCA ,choose first 4 </span>
+<span class="c1"># 8. Run Classifier AdaBoostClassifier,</span>
+<span class="c1"># 9. Precision =0.4 ,Recall =0.33</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jul 20 20:25:30 2016</span>
+
+<span class="sd">@author: Noklam</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;../tools/&quot;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="c1">## allow graph to be displayed</span>
+<span class="kn">import</span> <span class="nn">pylab</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">feature_format</span> <span class="kn">import</span> <span class="n">featureFormat</span><span class="p">,</span> <span class="n">targetFeatureSplit</span>
+<span class="kn">from</span> <span class="nn">tester</span> <span class="kn">import</span> <span class="n">dump_classifier_and_data</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">Imputer</span>                                            
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="nn">sklearn.grid_search</span> <span class="kn">import</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">RobustScaler</span>
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">from</span> <span class="nn">sklearn.cross_validation</span> <span class="kn">import</span> <span class="n">StratifiedShuffleSplit</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">cross_validation</span>
+<span class="kn">from</span> <span class="nn">sklearn.tree</span> <span class="kn">import</span> <span class="n">DecisionTreeClassifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="kn">from</span> <span class="nn">tester</span> <span class="kn">import</span> <span class="n">test_classifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">recall_score</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">precision_score</span>
+<span class="kn">from</span> <span class="nn">sklearn.svm</span> <span class="kn">import</span> <span class="n">SVC</span>
+<span class="kn">from</span> <span class="nn">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">GradientBoostingClassifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">MinMaxScaler</span>
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">make_scorer</span>
+<span class="kn">from</span> <span class="nn">sklearn.feature_selection</span> <span class="kn">import</span> <span class="n">SelectKBest</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">AdaBoostClassifier</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">svm</span>
+
+<span class="k">def</span> <span class="nf">data_preprocessing</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">data_file</span><span class="p">:</span>
+        <span class="n">data_dict</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">data_file</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">data_dict</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="s1">&#39;index&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;TOTAL&#39;</span><span class="p">)</span> <span class="c1">## remove </span>
+
+    <span class="c1">### Drop all the variable that I have done before, this function is aim to repeat the above process in a nice function.</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;email_address&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">drop_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;deferral_payments&#39;</span><span class="p">,</span> <span class="s1">&#39;deferred_income&#39;</span><span class="p">,</span> <span class="s1">&#39;director_fees&#39;</span><span class="p">,</span> <span class="s1">&#39;loan_advances&#39;</span><span class="p">,</span> <span class="s1">&#39;restricted_stock_deferred&#39;</span><span class="p">]</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">drop_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1">###new variable added</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;to_ratio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;from_poi_to_this_person&#39;</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;from_messages&#39;</span><span class="p">]</span> <span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;from_ratio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;from_this_person_to_poi&#39;</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;from_messages&#39;</span><span class="p">])</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;from_this_person_to_poi&#39;</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;from_poi_to_this_person&#39;</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;from_messages&#39;</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;to_messages&#39;</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">labels</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;poi&#39;</span><span class="p">]</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;poi&#39;</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">to_replace</span><span class="o">=</span><span class="s1">&#39;NaN&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">df</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">features_list</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+
+    <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;poi&#39;</span><span class="p">,</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">features</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="n">features_list</span><span class="p">]</span>
+    <span class="n">features_list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="s1">&#39;poi&#39;</span><span class="p">)</span>
+
+
+
+
+    <span class="k">return</span> <span class="n">data_dict</span><span class="p">,</span><span class="n">df</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">features_list</span>
+<span class="k">def</span> <span class="nf">get_train_test_split</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;This gets the train test split for the sklearn runs of the model&#39;&#39;&#39;</span>
+    <span class="n">features_train</span><span class="p">,</span> <span class="n">features_test</span><span class="p">,</span> <span class="n">labels_train</span><span class="p">,</span> <span class="n">labels_test</span> <span class="o">=</span> <span class="n">cross_validation</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">features_train</span><span class="p">,</span> <span class="n">features_test</span><span class="p">,</span> <span class="n">labels_train</span><span class="p">,</span> <span class="n">labels_test</span>
+
+<span class="k">def</span> <span class="nf">custom_scorer</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">predictions</span><span class="p">):</span>
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">precision_score</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span><span class="n">predictions</span><span class="p">)</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="n">recall_score</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span><span class="n">predictions</span> <span class="p">)</span>
+    <span class="n">min_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">precision</span><span class="p">,</span><span class="n">recall</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">min_score</span>
+
+<span class="n">scorer</span>  <span class="o">=</span> <span class="n">make_scorer</span><span class="p">(</span><span class="n">custom_scorer</span><span class="p">,</span> <span class="n">greater_is_better</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="n">data</span><span class="o">=</span><span class="s2">&quot;final_project_dataset.pkl&quot;</span>
+<span class="n">data_dict</span><span class="p">,</span><span class="n">df</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">features_list</span> <span class="o">=</span> <span class="n">data_preprocessing</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="n">features_train</span><span class="p">,</span> <span class="n">features_test</span><span class="p">,</span> <span class="n">labels_train</span><span class="p">,</span> <span class="n">labels_test</span><span class="o">=</span><span class="n">get_train_test_split</span><span class="p">(</span> <span class="n">features</span><span class="p">,</span><span class="n">labels</span><span class="p">)</span>
+
+<span class="c1">## I choose AdaboostClassifier to be my final choice as it seems to provide the highest performance</span>
+<span class="c1">## and I have tune the parameter which perform best in the training sample</span>
+<span class="n">Pipeline_final</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">([</span>
+        <span class="p">(</span><span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="n">MinMaxScaler</span><span class="p">()),</span>
+        <span class="p">(</span><span class="s1">&#39;selection&#39;</span><span class="p">,</span> <span class="n">SelectKBest</span><span class="p">()),</span>
+        <span class="p">(</span><span class="s1">&#39;pca&#39;</span><span class="p">,</span> <span class="n">PCA</span><span class="p">()),</span>
+        <span class="p">(</span><span class="s1">&#39;clf&#39;</span><span class="p">,</span> <span class="n">AdaBoostClassifier</span><span class="p">(</span><span class="n">DecisionTreeClassifier</span><span class="p">(</span><span class="n">max_depth</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span><span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+    <span class="p">])</span>
+<span class="c1"># estimator parameters</span>
+    <span class="c1">#&#39;</span>
+<span class="n">k</span> <span class="o">=</span> <span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+<span class="n">c</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+<span class="n">e</span> <span class="o">=</span> <span class="p">[</span><span class="mi">100</span><span class="p">]</span>
+<span class="n">r</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">]</span>
+
+
+<span class="n">param_grid</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;selection__k&#39;</span><span class="p">:</span> <span class="n">k</span><span class="p">,</span>
+            <span class="s1">&#39;pca__n_components&#39;</span><span class="p">:</span> <span class="n">c</span><span class="p">,</span>
+            <span class="s1">&#39;clf__n_estimators&#39;</span><span class="p">:</span> <span class="n">e</span><span class="p">,</span>
+            <span class="s1">&#39;clf__learning_rate&#39;</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span>
+             <span class="p">}</span>
+
+<span class="c1"># The imputer is useless as I end up fill all NaN with 0 which give me higher accuracy          </span>
+<span class="c1"># set model parameters to grid search object</span>
+<span class="n">gridCV_object_final</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span><span class="n">estimator</span> <span class="o">=</span> <span class="n">Pipeline_final</span><span class="p">,</span> 
+                             <span class="n">param_grid</span> <span class="o">=</span> <span class="n">param_grid</span><span class="p">,</span>
+                             <span class="n">scoring</span> <span class="o">=</span> <span class="n">scorer</span><span class="p">,</span>
+                             <span class="n">cv</span> <span class="o">=</span> <span class="n">StratifiedShuffleSplit</span><span class="p">(</span><span class="n">labels_train</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="n">train_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span><span class="n">random_state</span><span class="o">=</span><span class="mi">12</span><span class="p">))</span>
+
+<span class="c1"># train the model</span>
+<span class="n">gridCV_object_final</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">features_train</span><span class="p">,</span> <span class="n">labels_train</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="n">gridCV_object_final</span><span class="o">.</span><span class="n">best_params_</span>
+<span class="k">print</span> <span class="n">gridCV_object_final</span><span class="o">.</span><span class="n">scorer_</span>
+<span class="n">pred_CV</span> <span class="o">=</span> <span class="n">gridCV_object_final</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">features_test</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span>
+<span class="k">print</span> <span class="n">classification_report</span><span class="p">(</span><span class="n">labels_test</span><span class="p">,</span> <span class="n">pred_CV</span><span class="p">)</span>
+
+<span class="kn">from</span>  <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+
+<span class="n">df1</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span>
+<span class="n">df1</span> <span class="o">=</span> <span class="n">df1</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+<span class="k">print</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">And these are the results going through the test classifier:</span><span class="se">\n</span><span class="s2">&quot;</span>
+<span class="c1">## send the best parameter to clf</span>
+<span class="n">t0</span><span class="o">=</span><span class="n">time</span><span class="p">()</span>
+<span class="n">clf</span><span class="o">=</span><span class="n">gridCV_object_final</span><span class="o">.</span><span class="n">best_estimator_</span>
+<span class="n">test_classifier</span><span class="p">(</span><span class="n">clf</span><span class="p">,</span> <span class="n">df1</span><span class="p">,</span> <span class="n">features_list</span><span class="p">,</span> <span class="n">folds</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">t1</span><span class="o">=</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">t0</span>
+<span class="k">print</span> <span class="n">t1</span>
+
+
+<span class="n">CLF_PICKLE_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;my_classifier.pkl&quot;</span>
+<span class="n">DATASET_PICKLE_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;my_dataset.pkl&quot;</span>
+<span class="n">FEATURE_LIST_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;my_feature_list.pkl&quot;</span>
+<span class="n">dump_classifier_and_data</span><span class="p">(</span><span class="n">clf</span><span class="p">,</span><span class="n">df1</span><span class="p">,</span><span class="n">features_list</span><span class="p">)</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>{&#39;pca__n_components&#39;: 4, &#39;selection__k&#39;: 8, &#39;clf__learning_rate&#39;: 0.001, &#39;clf__n_estimators&#39;: 100}
+make_scorer(custom_scorer)
+             precision    recall  f1-score   support
+
+        0.0       0.97      0.93      0.95        40
+        1.0       0.50      0.75      0.60         4
+
+avg / total       0.93      0.91      0.92        44
+
+
+
+And these are the results going through the test classifier:
+
+Pipeline(steps=[(&#39;std&#39;, MinMaxScaler(copy=True, feature_range=(0, 1))), (&#39;selection&#39;, SelectKBest(k=8, score_func=&lt;function f_classif at 0x0000000009F909E8&gt;)), (&#39;pca&#39;, PCA(copy=True, n_components=4, whiten=False)), (&#39;clf&#39;, AdaBoostClassifier(algorithm=&#39;SAMME.R&#39;,
+          base_estimator=DecisionTreeClassifie...dom_state=None, splitter=&#39;best&#39;),
+          learning_rate=0.001, n_estimators=100, random_state=0))])
+    Accuracy: 0.84527   Precision: 0.40243  Recall: 0.33100 F1: 0.36324 F2: 0.34318
+    Total predictions: 15000    True positives:  662    False positives:  983   False negatives: 1338   True negatives: 12017
+
+186.04700017
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">features</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>bonus</th>
+      <th>exercised_stock_options</th>
+      <th>expenses</th>
+      <th>long_term_incentive</th>
+      <th>other</th>
+      <th>restricted_stock</th>
+      <th>salary</th>
+      <th>shared_receipt_with_poi</th>
+      <th>total_payments</th>
+      <th>total_stock_value</th>
+      <th>to_ratio</th>
+      <th>from_ratio</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>ALLEN PHILLIP K</th>
+      <td>15.244625</td>
+      <td>14.363367</td>
+      <td>9.537411</td>
+      <td>12.627431</td>
+      <td>5.030438</td>
+      <td>11.744259</td>
+      <td>12.215805</td>
+      <td>7.249926</td>
+      <td>15.316125</td>
+      <td>14.363367</td>
+      <td>0.021186</td>
+      <td>0.029183</td>
+    </tr>
+    <tr>
+      <th>BADUM JAMES P</th>
+      <td>0.000000</td>
+      <td>12.460009</td>
+      <td>8.156797</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>12.114325</td>
+      <td>12.460009</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>BANNANTINE JAMES M</th>
+      <td>0.000000</td>
+      <td>15.213278</td>
+      <td>10.938485</td>
+      <td>0.000000</td>
+      <td>13.669934</td>
+      <td>14.379433</td>
+      <td>6.169611</td>
+      <td>6.144186</td>
+      <td>13.727988</td>
+      <td>15.472497</td>
+      <td>0.852212</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>BAXTER JOHN C</th>
+      <td>13.997833</td>
+      <td>15.714710</td>
+      <td>9.323758</td>
+      <td>14.276761</td>
+      <td>14.793951</td>
+      <td>15.187380</td>
+      <td>12.495390</td>
+      <td>0.000000</td>
+      <td>15.544391</td>
+      <td>16.178556</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>BAY FRANKLIN R</th>
+      <td>12.899222</td>
+      <td>0.000000</td>
+      <td>11.768676</td>
+      <td>0.000000</td>
+      <td>4.248495</td>
+      <td>11.889971</td>
+      <td>12.387027</td>
+      <td>0.000000</td>
+      <td>13.626402</td>
+      <td>11.051128</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlight"><pre><span></span><span class="n">features_list</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>[&#39;poi&#39;,
+ &#39;bonus&#39;,
+ &#39;exercised_stock_options&#39;,
+ &#39;expenses&#39;,
+ &#39;long_term_incentive&#39;,
+ &#39;other&#39;,
+ &#39;restricted_stock&#39;,
+ &#39;salary&#39;,
+ &#39;shared_receipt_with_poi&#39;,
+ &#39;total_payments&#39;,
+ &#39;total_stock_value&#39;,
+ &#39;to_ratio&#39;,
+ &#39;from_ratio&#39;]
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">df</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>poi</th>
+      <th>bonus</th>
+      <th>exercised_stock_options</th>
+      <th>expenses</th>
+      <th>long_term_incentive</th>
+      <th>other</th>
+      <th>restricted_stock</th>
+      <th>salary</th>
+      <th>shared_receipt_with_poi</th>
+      <th>total_payments</th>
+      <th>total_stock_value</th>
+      <th>to_ratio</th>
+      <th>from_ratio</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+      <td>145.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>0.124138</td>
+      <td>7.574308</td>
+      <td>9.661799</td>
+      <td>6.729323</td>
+      <td>5.852428</td>
+      <td>6.318502</td>
+      <td>9.831722</td>
+      <td>8.007985</td>
+      <td>3.728530</td>
+      <td>11.544968</td>
+      <td>12.004710</td>
+      <td>0.306178</td>
+      <td>0.091930</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>0.330882</td>
+      <td>6.790419</td>
+      <td>6.536471</td>
+      <td>5.088038</td>
+      <td>6.546970</td>
+      <td>5.458204</td>
+      <td>5.861261</td>
+      <td>5.961404</td>
+      <td>3.344199</td>
+      <td>5.101617</td>
+      <td>5.128449</td>
+      <td>0.519126</td>
+      <td>0.147079</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>11.419647</td>
+      <td>12.306560</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>0.000000</td>
+      <td>12.611541</td>
+      <td>13.317664</td>
+      <td>9.843472</td>
+      <td>0.000000</td>
+      <td>6.854355</td>
+      <td>12.795328</td>
+      <td>12.257246</td>
+      <td>4.744932</td>
+      <td>13.727988</td>
+      <td>13.770381</td>
+      <td>0.020502</td>
+      <td>0.000000</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>0.000000</td>
+      <td>13.592368</td>
+      <td>14.327292</td>
+      <td>10.880365</td>
+      <td>12.832941</td>
+      <td>11.921446</td>
+      <td>13.457293</td>
+      <td>12.502753</td>
+      <td>6.803505</td>
+      <td>14.475287</td>
+      <td>14.640900</td>
+      <td>0.454255</td>
+      <td>0.181017</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>1.000000</td>
+      <td>15.894952</td>
+      <td>17.352066</td>
+      <td>12.340446</td>
+      <td>15.453620</td>
+      <td>16.153437</td>
+      <td>16.507546</td>
+      <td>13.921004</td>
+      <td>8.616495</td>
+      <td>18.455660</td>
+      <td>17.709575</td>
+      <td>2.527632</td>
+      <td>0.693147</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h4>1.Summarize for us the goal of this project and how machine learning is useful in trying to accomplish it. As part of your answer, give some background on the dataset and how it can be used to answer the project question. Were there any outliers in the data when you got it, and how did you handle those?  [relevant rubric items: “data exploration”, “outlier investigation”]</h4>
+<p>The goal of this project is to identify the POI from the given data, machine learning is able to dig into the data and extract some useful information. The dataset mainly contain two part of data, financial features: salary, bonus , etc and email features: email_address, from_message, to message etc.</p>
+<p>There is a data called"TOTAL" which is an outlier that sum up all other data, I have removed it since the beginning of the analysis. There are also quite a lot missing data in the dataset. I have remove the features which have NaN larger than a threshold, I have try to remove more features but turn out I keep my first try as it give the greatest performence. </p>
+<div class="highlight"><pre><span></span><span class="c1">##total number of data points</span>
+<span class="k">print</span> <span class="s2">&quot;Number of data point :&quot;</span> <span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">data_dict</span><span class="p">)</span>
+<span class="c1">##allocation across classes (POI/non-POI)</span>
+
+<span class="n">count_poi</span><span class="o">=</span><span class="mi">0</span>
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">data_dict</span><span class="p">:</span>
+    <span class="n">count_poi</span><span class="o">=</span><span class="n">count_poi</span><span class="o">+</span><span class="n">data_dict</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;poi&#39;</span><span class="p">]</span>  <span class="c1">## since poi is either 1 or 0, sum of it is the total numnber of poi</span>
+<span class="n">count_non_poi</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data_dict</span><span class="p">)</span><span class="o">-</span><span class="n">count_poi</span>
+<span class="k">print</span> <span class="s2">&quot;Number of POI : &quot;</span><span class="p">,</span> <span class="n">count_poi</span>
+<span class="k">print</span> <span class="s2">&quot;Number of non_POI : &quot;</span><span class="p">,</span> <span class="n">count_non_poi</span>
+<span class="k">print</span> <span class="s2">&quot;This number of POI and non-POI is before removing outlier TOTAL&quot;</span>
+
+<span class="c1">##number of features used</span>
+<span class="k">print</span><span class="s2">&quot;Number of features used :&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_list</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="c1">### poi is not included for features used.</span>
+<span class="c1">##are there features with many missing values? etc.</span>
+<span class="k">print</span><span class="s2">&quot;========&quot;</span><span class="o">*</span><span class="mi">8</span>
+<span class="k">print</span><span class="s2">&quot;Number of Missing data for each features:&quot;</span>
+<span class="n">df</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>Number of data point : 146
+Number of POI :  18
+Number of non_POI :  128
+This number of POI and non-POI is before removing outlier TOTAL
+Number of features used : 12
+================================================================
+Number of Missing data for each features:
+
+
+
+
+
+salary                        51
+to_messages                   59
+deferral_payments            107
+total_payments                21
+exercised_stock_options       44
+bonus                         64
+restricted_stock              36
+shared_receipt_with_poi       59
+restricted_stock_deferred    128
+total_stock_value             20
+expenses                      51
+loan_advances                142
+from_messages                 59
+other                         53
+from_this_person_to_poi       59
+poi                            0
+director_fees                129
+deferred_income               97
+long_term_incentive           80
+email_address                  0
+from_poi_to_this_person       59
+dtype: int64
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">drop_list</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">[</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">)</span> <span class="p">]</span>
+<span class="k">print</span> <span class="n">drop_list</span>
+<span class="c1">### Please note that the features which have more than 80 missing data are removed and the dropped featured are listed.</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>[&#39;deferral_payments&#39; &#39;restricted_stock_deferred&#39; &#39;loan_advances&#39;
+ &#39;director_fees&#39; &#39;deferred_income&#39;]
+</pre></div>
+
+
+<h4>2. What features did you end up using in your POI identifier, and what selection process did you use to pick them? Did you have to do any scaling? Why or why not? As part of the assignment, you should attempt to engineer your own feature that does not come ready-made in the dataset -- explain what feature you tried to make, and the rationale behind it. (You do not necessarily have to use it in the final analysis, only engineer and test it.) In your feature selection step, if you used an algorithm like a decision tree, please also give the feature importances of the features that you use, and if you used an automated feature selection function like SelectKBest, please report the feature scores and reasons for your choice of parameter values.  [relevant rubric items: “create new features”, “properly scale features”, “intelligently select feature”]</h4>
+<p>The features I kept is shown below, I have do MinMaxScaler scaling as I want to perform PCA and the unit for different features is different, it will be dominant by some of the features if I don't scale it first.
+I have create two features, to_ratio and from_ratio , which is correspond to from_poi_to_this_person/from_messages and from_this_person_to_poi/to_messages. The reason behind is that I think for the potential POI, they will have more communication within their community than other normal people. A single measurement from POI or to POI may have bias as certain people may really need to communicate to them more frequently. Thus, I scale it to the from_messages and to_messages which imples not the absolute amount of messages, but the portion of their message to/from poi.
+I have use pipeline and gridsearchCV to tune the parameter, all features excepted the dropped features is pass to the pipepline.
+There are 4 steps in the pipeline:
+1. MinMaxScaler
+2. SelectKBest
+3. PCA
+4. Classifier
+The optimized parameter is selected, which the 8 best features are selected by the SelectKBest and the first 4 PCs is choosed by PCA. </p>
+<div class="highlight"><pre><span></span><span class="k">print</span><span class="s2">&quot;Selected Features:&quot;</span><span class="p">,</span><span class="s2">&quot;===&quot;</span><span class="o">*</span><span class="mi">20</span>
+<span class="n">selected</span><span class="o">=</span><span class="n">clf</span><span class="o">.</span><span class="n">named_steps</span><span class="p">[</span><span class="s1">&#39;selection&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get_support</span><span class="p">()</span>
+<span class="n">features_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;poi&#39;</span><span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">features_list</span><span class="p">)[</span><span class="n">selected</span><span class="p">]</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>Selected Features: ============================================================
+
+
+
+
+
+array([&#39;bonus&#39;, &#39;expenses&#39;, &#39;other&#39;, &#39;salary&#39;, &#39;shared_receipt_with_poi&#39;,
+       &#39;total_payments&#39;, &#39;to_ratio&#39;, &#39;from_ratio&#39;], 
+      dtype=&#39;|S23&#39;)
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="n">clf</span><span class="o">.</span><span class="n">named_steps</span><span class="p">[</span><span class="s1">&#39;selection&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">scores_</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>array([ 10.31315372,   0.02858096,  12.93526457,   3.29949313,
+        16.87507603,   5.39384063,   8.84385607,   5.13845767,
+         6.06693833,   5.44001362,  12.04371759,  16.0935593 ])
+</pre></div>
+
+
+<h4>summary of the performence on the algorithm with "to_ratio" and "from_ratio" added.</h4>
+<p>Accuracy: 0.84580   Precision: 0.40440  Recall: 0.33100 F1: 0.36404 F2: 0.34347
+    Total predictions: 15000    True positives:  662    False positives:  975   False negatives: 1338   True negatives: 12025</p>
+<h4>without the new features added</h4>
+<p>Accuracy: 0.82340   Precision: 0.30878  Recall: 0.26200 F1: 0.28347 F2: 0.27019
+    Total predictions: 15000    True positives:  524    False positives: 1173   False negatives: 1476   True negatives: 11827</p>
+<h4>3. What algorithm did you end up using? What other one(s) did you try? How did model performance differ between algorithms?  [relevant rubric item: “pick an algorithm”]</h4>
+<p>I use SelectKBest then PCA and AdaBoostClassifier. I have also try GradientBoosting GaussianNB, SVC. I find Adaboost give me the highest performance then I keep it as my choice. The performence is shown below.</p>
+<p>Supplimentary answer: I should explain this part more, for the highest performance I mentioned, I mean the training classifier performence not the test classifier. The procedures I take is 1. run different algorithm with different parameter using Pipeline and GridsearchCV . 2. pick the classifier which give me the highest performance in the training set. 3. Add some more parameter to test the classifier I choosed( As if i try too many parameter for each classifier it takes me too much time, so I just test with less parameter choice at first) 4. Build the final classifier based on the chose classifier.</p>
+<p>Please correct me if I am wrong, I just want to make sure my concept is right.
+When we are building a classifier, we SHOULD train the classifier with train/test split. A furhter train/cross-validation split in the training set is done and we should choose the classifier works best on which have the best performence in the cross-validation test. The classifier then pass to the testing set to get the final performance.</p>
+<h3>These are all algorithms' performence on training set:</h3>
+<h3>GradientBoostingClassifier</h3>
+<p>precision    recall  f1-score   support</p>
+<div class="highlight"><pre><span></span>  False       0.93      0.93      0.93        40
+   True       0.25      0.25      0.25         4
+</pre></div>
+
+
+<p>avg / total       0.86      0.86      0.86        44</p>
+<div class="highlight"><pre><span></span><span class="c1">### AdaBoostClassifier</span>
+    <span class="n">precision</span>    <span class="n">recall</span>  <span class="n">f1</span><span class="o">-</span><span class="n">score</span>   <span class="n">support</span>
+
+      <span class="bp">False</span>       <span class="mf">0.95</span>      <span class="mf">0.93</span>      <span class="mf">0.94</span>        <span class="mi">40</span>
+       <span class="bp">True</span>       <span class="mf">0.40</span>      <span class="mf">0.50</span>      <span class="mf">0.44</span>         <span class="mi">4</span>
+
+<span class="n">avg</span> <span class="o">/</span> <span class="n">total</span>       <span class="mf">0.90</span>      <span class="mf">0.89</span>      <span class="mf">0.89</span>        <span class="mi">44</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>  <span class="c1">####SVC</span>
+    <span class="n">precision</span>    <span class="n">recall</span>  <span class="n">f1</span><span class="o">-</span><span class="n">score</span>   <span class="n">support</span>
+
+      <span class="bp">False</span>       <span class="mf">0.92</span>      <span class="mf">0.88</span>      <span class="mf">0.90</span>        <span class="mi">40</span>
+       <span class="bp">True</span>       <span class="mf">0.17</span>      <span class="mf">0.25</span>      <span class="mf">0.20</span>         <span class="mi">4</span>
+
+<span class="n">avg</span> <span class="o">/</span> <span class="n">total</span>       <span class="mf">0.85</span>      <span class="mf">0.82</span>      <span class="mf">0.83</span>        <span class="mi">44</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1">###GaussianNB</span>
+       <span class="n">precision</span>    <span class="n">recall</span>  <span class="n">f1</span><span class="o">-</span><span class="n">score</span>   <span class="n">support</span>
+
+      <span class="bp">False</span>       <span class="mf">0.91</span>      <span class="mf">0.97</span>      <span class="mf">0.94</span>        <span class="mi">40</span>
+       <span class="bp">True</span>       <span class="mf">0.00</span>      <span class="mf">0.00</span>      <span class="mf">0.00</span>         <span class="mi">4</span>
+
+<span class="n">avg</span> <span class="o">/</span> <span class="n">total</span>       <span class="mf">0.82</span>      <span class="mf">0.89</span>      <span class="mf">0.85</span>        <span class="mi">44</span>
+
+<span class="c1">### I am very confused on why it can not predict a single true POI, as I have seen people using this algorithm on the discussion</span>
+<span class="c1">### forum, I did some work to remove some features and try this algorithm seperately but still very poor performence, the </span>
+<span class="c1">### process is not recorded properly as I have just did it in the console and lost the record after. Any insight why this </span>
+<span class="c1">### classifier work so bad?</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span><span class="c1">### AdaBoostClassifier</span>
+  <span class="n">precision</span>    <span class="n">recall</span>  <span class="n">f1</span><span class="o">-</span><span class="n">score</span>   <span class="n">support</span>
+
+        <span class="mf">0.0</span>       <span class="mf">0.97</span>      <span class="mf">0.93</span>      <span class="mf">0.95</span>        <span class="mi">40</span>
+        <span class="mf">1.0</span>       <span class="mf">0.50</span>      <span class="mf">0.75</span>      <span class="mf">0.60</span>         <span class="mi">4</span>
+
+<span class="n">avg</span> <span class="o">/</span> <span class="n">total</span>       <span class="mf">0.93</span>      <span class="mf">0.91</span>      <span class="mf">0.92</span>        <span class="mi">44</span>
+<span class="c1">## As the performence is the best among the classifiers, therefore I choose it.</span>
+</pre></div>
+
+
+<h4>What does it mean to tune the parameters of an algorithm, and what can happen if you don’t do this well?  How did you tune the parameters of your particular algorithm? (Some algorithms do not have parameters that you need to tune -- if this is the case for the one you picked, identify and briefly explain how you would have done it for the model that was not your final choice or a different model that does utilize parameter tuning, e.g. a decision tree classifier).  [relevant rubric item: “tune the algorithm”]</h4>
+<p>Tuning the parameters is analogous to tune a TV cable, you may fail to watch the tv channel if you do not do so, or get bad quality. It is important to fine tune the classifier to maximize the performence. I use GridSearchCV did a lot of testing on max depth, imputer, learning rate, pca  and selectedKbest features.</p>
+<div class="highlight"><pre><span></span>
+</pre></div>
+
+
+<h4>What is validation, and what’s a classic mistake you can make if you do it wrong? How did you validate your analysis?  [relevant rubric item: “validation strategy”]</h4>
+<p>Classic mistake is overfitting the model, if a cross-validation test is not used, you can always get a classifier that have 100% accuracy, as it is basically doing an exam with answer provided. </p>
+<p>First,70% data is split as training data and 30% data is testing data. Then a Stratifiedshufflesplit it used to split the training set to training and testing set(cross-validation set), the testing set is the cross validation set that the gridsearchCV selected the best parameter base on data train and predict in the validation set.
+The best estimator is then used to submit to the grader for final testing.</p>
+<p>StratifiedShuffleSplit is used because the dataset is relatively small and POI is only accounted for a small number. A StratifiedShuffleSplit is to make sure the training set have POI in it by keeping the percentage of class as otherwise it can rate bad classifier which always classify Non-POI as a good classifier.</p>
+<p>If no cross-validation is done, you can always overfitting by trial and error and you eventually get a classifier that can predict accurately on the particular testing set but which is very likely not working to future data.</p>
+<p>For recall and precision, I take the performence of my selected classifier as an example.
+Precision and recall both take the range [0 1].
+Precision = True positive/ ( True Positive + False Positive)
+Recall = True positive/ ( True Positive + False Negative)</p>
+<p>For precision, it is a summary on the classifier where the proportion of True classification is right. In the example, precision =0.402 means  when 100 True classifications is made, 40.2 is positive true classification.</p>
+<p>For recall, it is a summary on the classifier where the proportion of True classification is predicted by the classifier. in th eexample, recall = 0.331. It mean when there are 100 True labels, 33.1 of them will be picked up by the classifier.</p>
+<p>A high precision indicate that whenever the classifier make a True classification, it is very likely to be correct.
+A high recall indicate that the classifier is able to classify most of the positive True labels from the data.</p>
+<div class="highlight"><pre><span></span><span class="c1">### AdaBoostClassifier</span>
+<span class="n">Accuracy</span><span class="p">:</span> <span class="mf">0.84527</span>   <span class="n">Precision</span><span class="p">:</span> <span class="mf">0.40243</span>  <span class="n">Recall</span><span class="p">:</span> <span class="mf">0.33100</span> <span class="n">F1</span><span class="p">:</span> <span class="mf">0.36324</span> <span class="n">F2</span><span class="p">:</span> <span class="mf">0.34318</span>
+    <span class="n">Total</span> <span class="n">predictions</span><span class="p">:</span> <span class="mi">15000</span>    <span class="bp">True</span> <span class="n">positives</span><span class="p">:</span>  <span class="mi">662</span>    <span class="bp">False</span> <span class="n">positives</span><span class="p">:</span>  <span class="mi">983</span>   <span class="bp">False</span> <span class="n">negatives</span><span class="p">:</span> <span class="mi">1338</span>   <span class="bp">True</span> <span class="n">negatives</span><span class="p">:</span> <span class="mi">12017</span>
+</pre></div>
+
+
+<div class="highlight"><pre><span></span>
+</pre></div>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="http://getpelican.com/">Pelican</a>, which takes great advantage of <a href="http://python.org">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="http://coding.smashingmagazine.com/2009/08/04/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+</body>
+</html>
