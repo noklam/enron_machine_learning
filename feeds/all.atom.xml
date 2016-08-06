@@ -1,0 +1,687 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>A Pelican Blog</title><link href="/" rel="alternate"></link><link href="/feeds/all.atom.xml" rel="self"></link><id>/</id><updated>2016-08-06T10:20:00+00:00</updated><entry><title>My First Project</title><link href="/my-first-project.html" rel="alternate"></link><published>2016-08-06T10:20:00+00:00</published><author><name></name></author><id>tag:,2016-08-06:my-first-project.html</id><summary type="html">&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# -*- coding: utf-8 -*-&lt;/span&gt;
+&lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="sd"&gt;Created on Wed Jul 20 20:25:30 2016&lt;/span&gt;
+
+&lt;span class="sd"&gt;@author: Noklam&lt;/span&gt;
+&lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+
+&lt;span class="c1"&gt;## This Project is greatly inspired by the discussion, which help me a lot to &lt;/span&gt;
+&lt;span class="c1"&gt;## debug and I have give up my original code and follow their structure and &lt;/span&gt;
+&lt;span class="c1"&gt;## made my own classifier &lt;/span&gt;
+&lt;span class="c1"&gt;## Especially helpful discussion from vivek_29420285151271 and michael_807478&lt;/span&gt;
+&lt;span class="c1"&gt;## As I am not a pro-programmer, doesnt develop habit of writing nice function&lt;/span&gt;
+&lt;span class="c1"&gt;## Their well-written function have helped me a lot to simplify the final &lt;/span&gt;
+&lt;span class="c1"&gt;## version&lt;/span&gt;
+&lt;span class="c1"&gt;######Steps:&lt;/span&gt;
+&lt;span class="c1"&gt;# 1. Remove outlier &amp;quot;TOTAL&amp;quot;&lt;/span&gt;
+&lt;span class="c1"&gt;# 2. Remove unwanted features&lt;/span&gt;
+&lt;span class="c1"&gt;# 3. Log transformation&lt;/span&gt;
+&lt;span class="c1"&gt;# 4. Pipeline&lt;/span&gt;
+&lt;span class="c1"&gt;# 5. Imputer 0 for NaN, MinMaxScaler&lt;/span&gt;
+&lt;span class="c1"&gt;# 6. Select K-best , K=8&lt;/span&gt;
+&lt;span class="c1"&gt;# 7. PCA ,choose first 4 &lt;/span&gt;
+&lt;span class="c1"&gt;# 8. Run Classifier AdaBoostClassifier,&lt;/span&gt;
+&lt;span class="c1"&gt;# 9. Precision =0.4 ,Recall =0.33&lt;/span&gt;
+&lt;span class="c1"&gt;# -*- coding: utf-8 -*-&lt;/span&gt;
+&lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="sd"&gt;Created on Wed Jul 20 20:25:30 2016&lt;/span&gt;
+
+&lt;span class="sd"&gt;@author: Noklam&lt;/span&gt;
+&lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;sys&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pickle&lt;/span&gt;
+&lt;span class="n"&gt;sys&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;../tools/&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;matplotlib.pyplot&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;plt&lt;/span&gt;
+&lt;span class="c1"&gt;## allow graph to be displayed&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pylab&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pandas&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;pd&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;numpy&lt;/span&gt; &lt;span class="kn"&gt;as&lt;/span&gt; &lt;span class="nn"&gt;np&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;feature_format&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;featureFormat&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;targetFeatureSplit&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tester&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;dump_classifier_and_data&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.preprocessing&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Imputer&lt;/span&gt;                                            
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.pipeline&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Pipeline&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.grid_search&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;GridSearchCV&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.preprocessing&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;StandardScaler&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.preprocessing&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;RobustScaler&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.decomposition&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;PCA&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.cross_validation&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;StratifiedShuffleSplit&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;cross_validation&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.tree&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;DecisionTreeClassifier&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.ensemble&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;RandomForestClassifier&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.naive_bayes&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;GaussianNB&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;tester&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;test_classifier&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.metrics&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;recall_score&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.metrics&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;precision_score&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.svm&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;SVC&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.naive_bayes&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;GaussianNB&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.ensemble&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;GradientBoostingClassifier&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.pipeline&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Pipeline&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.preprocessing&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;StandardScaler&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.preprocessing&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;MinMaxScaler&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.decomposition&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;PCA&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.metrics&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;make_scorer&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.feature_selection&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;SelectKBest&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.ensemble&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;AdaBoostClassifier&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;svm&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;data_preprocessing&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+
+
+    &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nb"&gt;open&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;r&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;as&lt;/span&gt; &lt;span class="n"&gt;data_file&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;data_dict&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;pickle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;load&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data_file&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;pd&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DataFrame&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;from_dict&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;orient&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;index&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dtype&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;float&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;TOTAL&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="c1"&gt;## remove &lt;/span&gt;
+
+    &lt;span class="c1"&gt;### Drop all the variable that I have done before, this function is aim to repeat the above process in a nice function.&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;email_address&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;astype&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;float&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;drop_list&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;deferral_payments&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;deferred_income&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;director_fees&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;loan_advances&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;restricted_stock_deferred&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;drop_list&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="c1"&gt;###new variable added&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;to_ratio&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_poi_to_this_person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_messages&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_ratio&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_this_person_to_poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_messages&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_this_person_to_poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_poi_to_this_person&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;from_messages&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;to_messages&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;drop&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;axis&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;to_replace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;NaN&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nan&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;inplace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;list&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;columns&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;values&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;insert&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fillna&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;insert&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+
+
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_list&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_train_test_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;#39;&amp;#39;&amp;#39;This gets the train test split for the sklearn runs of the model&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+    &lt;span class="n"&gt;features_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_test&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_test&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;cross_validation&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;train_test_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;test_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;0.3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;random_state&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;42&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;features_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_test&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_test&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;custom_scorer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;predictions&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;precision&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;precision_score&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;predictions&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;recall&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;recall_score&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;predictions&lt;/span&gt; &lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;min_score&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;min&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;precision&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;recall&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;min_score&lt;/span&gt;
+
+&lt;span class="n"&gt;scorer&lt;/span&gt;  &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;make_scorer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;custom_scorer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;greater_is_better&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;final_project_dataset.pkl&amp;quot;&lt;/span&gt;
+&lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;data_preprocessing&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;features_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_test&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_test&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;get_train_test_split&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt; &lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;labels&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;## I choose AdaboostClassifier to be my final choice as it seems to provide the highest performance&lt;/span&gt;
+&lt;span class="c1"&gt;## and I have tune the parameter which perform best in the training sample&lt;/span&gt;
+&lt;span class="n"&gt;Pipeline_final&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Pipeline&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;std&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;MinMaxScaler&lt;/span&gt;&lt;span class="p"&gt;()),&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;selection&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;SelectKBest&lt;/span&gt;&lt;span class="p"&gt;()),&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;pca&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;PCA&lt;/span&gt;&lt;span class="p"&gt;()),&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;clf&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;AdaBoostClassifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;DecisionTreeClassifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;max_depth&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;&lt;span class="n"&gt;random_state&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="p"&gt;])&lt;/span&gt;
+&lt;span class="c1"&gt;# estimator parameters&lt;/span&gt;
+    &lt;span class="c1"&gt;#&amp;#39;&lt;/span&gt;
+&lt;span class="n"&gt;k&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;e&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;r&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mf"&gt;0.001&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+
+
+&lt;span class="n"&gt;param_grid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;selection__k&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;k&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+            &lt;span class="s1"&gt;&amp;#39;pca__n_components&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;c&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+            &lt;span class="s1"&gt;&amp;#39;clf__n_estimators&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+            &lt;span class="s1"&gt;&amp;#39;clf__learning_rate&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+             &lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="c1"&gt;# The imputer is useless as I end up fill all NaN with 0 which give me higher accuracy          &lt;/span&gt;
+&lt;span class="c1"&gt;# set model parameters to grid search object&lt;/span&gt;
+&lt;span class="n"&gt;gridCV_object_final&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;GridSearchCV&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;estimator&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Pipeline_final&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; 
+                             &lt;span class="n"&gt;param_grid&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;param_grid&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                             &lt;span class="n"&gt;scoring&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;scorer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                             &lt;span class="n"&gt;cv&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;StratifiedShuffleSplit&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;labels_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;200&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;train_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;0.1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;random_state&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;12&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="c1"&gt;# train the model&lt;/span&gt;
+&lt;span class="n"&gt;gridCV_object_final&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fit&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features_train&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;labels_train&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="n"&gt;gridCV_object_final&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;best_params_&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="n"&gt;gridCV_object_final&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;scorer_&lt;/span&gt;
+&lt;span class="n"&gt;pred_CV&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;gridCV_object_final&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;predict&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features_test&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;sklearn.metrics&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;classification_report&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="n"&gt;classification_report&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;labels_test&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;pred_CV&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt;  &lt;span class="nn"&gt;time&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;time&lt;/span&gt;
+
+&lt;span class="n"&gt;df1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;transpose&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;df1&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;df1&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;to_dict&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="se"&gt;\n\n&lt;/span&gt;&lt;span class="s2"&gt;And these are the results going through the test classifier:&lt;/span&gt;&lt;span class="se"&gt;\n&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;span class="c1"&gt;## send the best parameter to clf&lt;/span&gt;
+&lt;span class="n"&gt;t0&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;time&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;clf&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;gridCV_object_final&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;best_estimator_&lt;/span&gt;
+&lt;span class="n"&gt;test_classifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;clf&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;df1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;folds&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;1000&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;t1&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;time&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;t0&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="n"&gt;t1&lt;/span&gt;
+
+
+&lt;span class="n"&gt;CLF_PICKLE_FILENAME&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;my_classifier.pkl&amp;quot;&lt;/span&gt;
+&lt;span class="n"&gt;DATASET_PICKLE_FILENAME&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;my_dataset.pkl&amp;quot;&lt;/span&gt;
+&lt;span class="n"&gt;FEATURE_LIST_FILENAME&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;my_feature_list.pkl&amp;quot;&lt;/span&gt;
+&lt;span class="n"&gt;dump_classifier_and_data&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;clf&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;df1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;{&amp;#39;pca__n_components&amp;#39;: 4, &amp;#39;selection__k&amp;#39;: 8, &amp;#39;clf__learning_rate&amp;#39;: 0.001, &amp;#39;clf__n_estimators&amp;#39;: 100}
+make_scorer(custom_scorer)
+             precision    recall  f1-score   support
+
+        0.0       0.97      0.93      0.95        40
+        1.0       0.50      0.75      0.60         4
+
+avg / total       0.93      0.91      0.92        44
+
+
+
+And these are the results going through the test classifier:
+
+Pipeline(steps=[(&amp;#39;std&amp;#39;, MinMaxScaler(copy=True, feature_range=(0, 1))), (&amp;#39;selection&amp;#39;, SelectKBest(k=8, score_func=&amp;lt;function f_classif at 0x0000000009F909E8&amp;gt;)), (&amp;#39;pca&amp;#39;, PCA(copy=True, n_components=4, whiten=False)), (&amp;#39;clf&amp;#39;, AdaBoostClassifier(algorithm=&amp;#39;SAMME.R&amp;#39;,
+          base_estimator=DecisionTreeClassifie...dom_state=None, splitter=&amp;#39;best&amp;#39;),
+          learning_rate=0.001, n_estimators=100, random_state=0))])
+    Accuracy: 0.84527   Precision: 0.40243  Recall: 0.33100 F1: 0.36324 F2: 0.34318
+    Total predictions: 15000    True positives:  662    False positives:  983   False negatives: 1338   True negatives: 12017
+
+186.04700017
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;features&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;head&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div&gt;
+&lt;table border="1" class="dataframe"&gt;
+  &lt;thead&gt;
+    &lt;tr style="text-align: right;"&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;bonus&lt;/th&gt;
+      &lt;th&gt;exercised_stock_options&lt;/th&gt;
+      &lt;th&gt;expenses&lt;/th&gt;
+      &lt;th&gt;long_term_incentive&lt;/th&gt;
+      &lt;th&gt;other&lt;/th&gt;
+      &lt;th&gt;restricted_stock&lt;/th&gt;
+      &lt;th&gt;salary&lt;/th&gt;
+      &lt;th&gt;shared_receipt_with_poi&lt;/th&gt;
+      &lt;th&gt;total_payments&lt;/th&gt;
+      &lt;th&gt;total_stock_value&lt;/th&gt;
+      &lt;th&gt;to_ratio&lt;/th&gt;
+      &lt;th&gt;from_ratio&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;ALLEN PHILLIP K&lt;/th&gt;
+      &lt;td&gt;15.244625&lt;/td&gt;
+      &lt;td&gt;14.363367&lt;/td&gt;
+      &lt;td&gt;9.537411&lt;/td&gt;
+      &lt;td&gt;12.627431&lt;/td&gt;
+      &lt;td&gt;5.030438&lt;/td&gt;
+      &lt;td&gt;11.744259&lt;/td&gt;
+      &lt;td&gt;12.215805&lt;/td&gt;
+      &lt;td&gt;7.249926&lt;/td&gt;
+      &lt;td&gt;15.316125&lt;/td&gt;
+      &lt;td&gt;14.363367&lt;/td&gt;
+      &lt;td&gt;0.021186&lt;/td&gt;
+      &lt;td&gt;0.029183&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;BADUM JAMES P&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;12.460009&lt;/td&gt;
+      &lt;td&gt;8.156797&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;12.114325&lt;/td&gt;
+      &lt;td&gt;12.460009&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;BANNANTINE JAMES M&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;15.213278&lt;/td&gt;
+      &lt;td&gt;10.938485&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;13.669934&lt;/td&gt;
+      &lt;td&gt;14.379433&lt;/td&gt;
+      &lt;td&gt;6.169611&lt;/td&gt;
+      &lt;td&gt;6.144186&lt;/td&gt;
+      &lt;td&gt;13.727988&lt;/td&gt;
+      &lt;td&gt;15.472497&lt;/td&gt;
+      &lt;td&gt;0.852212&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;BAXTER JOHN C&lt;/th&gt;
+      &lt;td&gt;13.997833&lt;/td&gt;
+      &lt;td&gt;15.714710&lt;/td&gt;
+      &lt;td&gt;9.323758&lt;/td&gt;
+      &lt;td&gt;14.276761&lt;/td&gt;
+      &lt;td&gt;14.793951&lt;/td&gt;
+      &lt;td&gt;15.187380&lt;/td&gt;
+      &lt;td&gt;12.495390&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;15.544391&lt;/td&gt;
+      &lt;td&gt;16.178556&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;BAY FRANKLIN R&lt;/th&gt;
+      &lt;td&gt;12.899222&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;11.768676&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;4.248495&lt;/td&gt;
+      &lt;td&gt;11.889971&lt;/td&gt;
+      &lt;td&gt;12.387027&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;13.626402&lt;/td&gt;
+      &lt;td&gt;11.051128&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;features_list&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;[&amp;#39;poi&amp;#39;,
+ &amp;#39;bonus&amp;#39;,
+ &amp;#39;exercised_stock_options&amp;#39;,
+ &amp;#39;expenses&amp;#39;,
+ &amp;#39;long_term_incentive&amp;#39;,
+ &amp;#39;other&amp;#39;,
+ &amp;#39;restricted_stock&amp;#39;,
+ &amp;#39;salary&amp;#39;,
+ &amp;#39;shared_receipt_with_poi&amp;#39;,
+ &amp;#39;total_payments&amp;#39;,
+ &amp;#39;total_stock_value&amp;#39;,
+ &amp;#39;to_ratio&amp;#39;,
+ &amp;#39;from_ratio&amp;#39;]
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;describe&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div&gt;
+&lt;table border="1" class="dataframe"&gt;
+  &lt;thead&gt;
+    &lt;tr style="text-align: right;"&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;poi&lt;/th&gt;
+      &lt;th&gt;bonus&lt;/th&gt;
+      &lt;th&gt;exercised_stock_options&lt;/th&gt;
+      &lt;th&gt;expenses&lt;/th&gt;
+      &lt;th&gt;long_term_incentive&lt;/th&gt;
+      &lt;th&gt;other&lt;/th&gt;
+      &lt;th&gt;restricted_stock&lt;/th&gt;
+      &lt;th&gt;salary&lt;/th&gt;
+      &lt;th&gt;shared_receipt_with_poi&lt;/th&gt;
+      &lt;th&gt;total_payments&lt;/th&gt;
+      &lt;th&gt;total_stock_value&lt;/th&gt;
+      &lt;th&gt;to_ratio&lt;/th&gt;
+      &lt;th&gt;from_ratio&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;count&lt;/th&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+      &lt;td&gt;145.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;mean&lt;/th&gt;
+      &lt;td&gt;0.124138&lt;/td&gt;
+      &lt;td&gt;7.574308&lt;/td&gt;
+      &lt;td&gt;9.661799&lt;/td&gt;
+      &lt;td&gt;6.729323&lt;/td&gt;
+      &lt;td&gt;5.852428&lt;/td&gt;
+      &lt;td&gt;6.318502&lt;/td&gt;
+      &lt;td&gt;9.831722&lt;/td&gt;
+      &lt;td&gt;8.007985&lt;/td&gt;
+      &lt;td&gt;3.728530&lt;/td&gt;
+      &lt;td&gt;11.544968&lt;/td&gt;
+      &lt;td&gt;12.004710&lt;/td&gt;
+      &lt;td&gt;0.306178&lt;/td&gt;
+      &lt;td&gt;0.091930&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;std&lt;/th&gt;
+      &lt;td&gt;0.330882&lt;/td&gt;
+      &lt;td&gt;6.790419&lt;/td&gt;
+      &lt;td&gt;6.536471&lt;/td&gt;
+      &lt;td&gt;5.088038&lt;/td&gt;
+      &lt;td&gt;6.546970&lt;/td&gt;
+      &lt;td&gt;5.458204&lt;/td&gt;
+      &lt;td&gt;5.861261&lt;/td&gt;
+      &lt;td&gt;5.961404&lt;/td&gt;
+      &lt;td&gt;3.344199&lt;/td&gt;
+      &lt;td&gt;5.101617&lt;/td&gt;
+      &lt;td&gt;5.128449&lt;/td&gt;
+      &lt;td&gt;0.519126&lt;/td&gt;
+      &lt;td&gt;0.147079&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;min&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;25%&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;11.419647&lt;/td&gt;
+      &lt;td&gt;12.306560&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;50%&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;12.611541&lt;/td&gt;
+      &lt;td&gt;13.317664&lt;/td&gt;
+      &lt;td&gt;9.843472&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;6.854355&lt;/td&gt;
+      &lt;td&gt;12.795328&lt;/td&gt;
+      &lt;td&gt;12.257246&lt;/td&gt;
+      &lt;td&gt;4.744932&lt;/td&gt;
+      &lt;td&gt;13.727988&lt;/td&gt;
+      &lt;td&gt;13.770381&lt;/td&gt;
+      &lt;td&gt;0.020502&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;75%&lt;/th&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;13.592368&lt;/td&gt;
+      &lt;td&gt;14.327292&lt;/td&gt;
+      &lt;td&gt;10.880365&lt;/td&gt;
+      &lt;td&gt;12.832941&lt;/td&gt;
+      &lt;td&gt;11.921446&lt;/td&gt;
+      &lt;td&gt;13.457293&lt;/td&gt;
+      &lt;td&gt;12.502753&lt;/td&gt;
+      &lt;td&gt;6.803505&lt;/td&gt;
+      &lt;td&gt;14.475287&lt;/td&gt;
+      &lt;td&gt;14.640900&lt;/td&gt;
+      &lt;td&gt;0.454255&lt;/td&gt;
+      &lt;td&gt;0.181017&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;max&lt;/th&gt;
+      &lt;td&gt;1.000000&lt;/td&gt;
+      &lt;td&gt;15.894952&lt;/td&gt;
+      &lt;td&gt;17.352066&lt;/td&gt;
+      &lt;td&gt;12.340446&lt;/td&gt;
+      &lt;td&gt;15.453620&lt;/td&gt;
+      &lt;td&gt;16.153437&lt;/td&gt;
+      &lt;td&gt;16.507546&lt;/td&gt;
+      &lt;td&gt;13.921004&lt;/td&gt;
+      &lt;td&gt;8.616495&lt;/td&gt;
+      &lt;td&gt;18.455660&lt;/td&gt;
+      &lt;td&gt;17.709575&lt;/td&gt;
+      &lt;td&gt;2.527632&lt;/td&gt;
+      &lt;td&gt;0.693147&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h4&gt;1.Summarize for us the goal of this project and how machine learning is useful in trying to accomplish it. As part of your answer, give some background on the dataset and how it can be used to answer the project question. Were there any outliers in the data when you got it, and how did you handle those?  [relevant rubric items: “data exploration”, “outlier investigation”]&lt;/h4&gt;
+&lt;p&gt;The goal of this project is to identify the POI from the given data, machine learning is able to dig into the data and extract some useful information. The dataset mainly contain two part of data, financial features: salary, bonus , etc and email features: email_address, from_message, to message etc.&lt;/p&gt;
+&lt;p&gt;There is a data called"TOTAL" which is an outlier that sum up all other data, I have removed it since the beginning of the analysis. There are also quite a lot missing data in the dataset. I have remove the features which have NaN larger than a threshold, I have try to remove more features but turn out I keep my first try as it give the greatest performence. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;##total number of data points&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Number of data point :&amp;quot;&lt;/span&gt; &lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;##allocation across classes (POI/non-POI)&lt;/span&gt;
+
+&lt;span class="n"&gt;count_poi&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;name&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;count_poi&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;count_poi&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="p"&gt;][&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;  &lt;span class="c1"&gt;## since poi is either 1 or 0, sum of it is the total numnber of poi&lt;/span&gt;
+&lt;span class="n"&gt;count_non_poi&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;data_dict&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;count_poi&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Number of POI : &amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;count_poi&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Number of non_POI : &amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;count_non_poi&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;This number of POI and non-POI is before removing outlier TOTAL&amp;quot;&lt;/span&gt;
+
+&lt;span class="c1"&gt;##number of features used&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Number of features used :&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="c1"&gt;### poi is not included for features used.&lt;/span&gt;
+&lt;span class="c1"&gt;##are there features with many missing values? etc.&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;========&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Number of Missing data for each features:&amp;quot;&lt;/span&gt;
+&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;isnull&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Number of data point : 146
+Number of POI :  18
+Number of non_POI :  128
+This number of POI and non-POI is before removing outlier TOTAL
+Number of features used : 12
+================================================================
+Number of Missing data for each features:
+
+
+
+
+
+salary                        51
+to_messages                   59
+deferral_payments            107
+total_payments                21
+exercised_stock_options       44
+bonus                         64
+restricted_stock              36
+shared_receipt_with_poi       59
+restricted_stock_deferred    128
+total_stock_value             20
+expenses                      51
+loan_advances                142
+from_messages                 59
+other                         53
+from_this_person_to_poi       59
+poi                            0
+director_fees                129
+deferred_income               97
+long_term_incentive           80
+email_address                  0
+from_poi_to_this_person       59
+dtype: int64
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;drop_list&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;isnull&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;index&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;values&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;array&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;isnull&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="k"&gt;print&lt;/span&gt; &lt;span class="n"&gt;drop_list&lt;/span&gt;
+&lt;span class="c1"&gt;### Please note that the features which have more than 80 missing data are removed and the dropped featured are listed.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;[&amp;#39;deferral_payments&amp;#39; &amp;#39;restricted_stock_deferred&amp;#39; &amp;#39;loan_advances&amp;#39;
+ &amp;#39;director_fees&amp;#39; &amp;#39;deferred_income&amp;#39;]
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h4&gt;2. What features did you end up using in your POI identifier, and what selection process did you use to pick them? Did you have to do any scaling? Why or why not? As part of the assignment, you should attempt to engineer your own feature that does not come ready-made in the dataset -- explain what feature you tried to make, and the rationale behind it. (You do not necessarily have to use it in the final analysis, only engineer and test it.) In your feature selection step, if you used an algorithm like a decision tree, please also give the feature importances of the features that you use, and if you used an automated feature selection function like SelectKBest, please report the feature scores and reasons for your choice of parameter values.  [relevant rubric items: “create new features”, “properly scale features”, “intelligently select feature”]&lt;/h4&gt;
+&lt;p&gt;The features I kept is shown below, I have do MinMaxScaler scaling as I want to perform PCA and the unit for different features is different, it will be dominant by some of the features if I don't scale it first.
+I have create two features, to_ratio and from_ratio , which is correspond to from_poi_to_this_person/from_messages and from_this_person_to_poi/to_messages. The reason behind is that I think for the potential POI, they will have more communication within their community than other normal people. A single measurement from POI or to POI may have bias as certain people may really need to communicate to them more frequently. Thus, I scale it to the from_messages and to_messages which imples not the absolute amount of messages, but the portion of their message to/from poi.
+I have use pipeline and gridsearchCV to tune the parameter, all features excepted the dropped features is pass to the pipepline.
+There are 4 steps in the pipeline:
+1. MinMaxScaler
+2. SelectKBest
+3. PCA
+4. Classifier
+The optimized parameter is selected, which the 8 best features are selected by the SelectKBest and the first 4 PCs is choosed by PCA. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Selected Features:&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;===&amp;quot;&lt;/span&gt;&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="mi"&gt;20&lt;/span&gt;
+&lt;span class="n"&gt;selected&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;clf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;named_steps&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;selection&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_support&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;remove&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;poi&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;array&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;features_list&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="n"&gt;selected&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Selected Features: ============================================================
+
+
+
+
+
+array([&amp;#39;bonus&amp;#39;, &amp;#39;expenses&amp;#39;, &amp;#39;other&amp;#39;, &amp;#39;salary&amp;#39;, &amp;#39;shared_receipt_with_poi&amp;#39;,
+       &amp;#39;total_payments&amp;#39;, &amp;#39;to_ratio&amp;#39;, &amp;#39;from_ratio&amp;#39;], 
+      dtype=&amp;#39;|S23&amp;#39;)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;clf&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;named_steps&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;selection&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;scores_&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;array([ 10.31315372,   0.02858096,  12.93526457,   3.29949313,
+        16.87507603,   5.39384063,   8.84385607,   5.13845767,
+         6.06693833,   5.44001362,  12.04371759,  16.0935593 ])
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h4&gt;summary of the performence on the algorithm with "to_ratio" and "from_ratio" added.&lt;/h4&gt;
+&lt;p&gt;Accuracy: 0.84580   Precision: 0.40440  Recall: 0.33100 F1: 0.36404 F2: 0.34347
+    Total predictions: 15000    True positives:  662    False positives:  975   False negatives: 1338   True negatives: 12025&lt;/p&gt;
+&lt;h4&gt;without the new features added&lt;/h4&gt;
+&lt;p&gt;Accuracy: 0.82340   Precision: 0.30878  Recall: 0.26200 F1: 0.28347 F2: 0.27019
+    Total predictions: 15000    True positives:  524    False positives: 1173   False negatives: 1476   True negatives: 11827&lt;/p&gt;
+&lt;h4&gt;3. What algorithm did you end up using? What other one(s) did you try? How did model performance differ between algorithms?  [relevant rubric item: “pick an algorithm”]&lt;/h4&gt;
+&lt;p&gt;I use SelectKBest then PCA and AdaBoostClassifier. I have also try GradientBoosting GaussianNB, SVC. I find Adaboost give me the highest performance then I keep it as my choice. The performence is shown below.&lt;/p&gt;
+&lt;p&gt;Supplimentary answer: I should explain this part more, for the highest performance I mentioned, I mean the training classifier performence not the test classifier. The procedures I take is 1. run different algorithm with different parameter using Pipeline and GridsearchCV . 2. pick the classifier which give me the highest performance in the training set. 3. Add some more parameter to test the classifier I choosed( As if i try too many parameter for each classifier it takes me too much time, so I just test with less parameter choice at first) 4. Build the final classifier based on the chose classifier.&lt;/p&gt;
+&lt;p&gt;Please correct me if I am wrong, I just want to make sure my concept is right.
+When we are building a classifier, we SHOULD train the classifier with train/test split. A furhter train/cross-validation split in the training set is done and we should choose the classifier works best on which have the best performence in the cross-validation test. The classifier then pass to the testing set to get the final performance.&lt;/p&gt;
+&lt;h3&gt;These are all algorithms' performence on training set:&lt;/h3&gt;
+&lt;h3&gt;GradientBoostingClassifier&lt;/h3&gt;
+&lt;p&gt;precision    recall  f1-score   support&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;  False       0.93      0.93      0.93        40
+   True       0.25      0.25      0.25         4
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;avg / total       0.86      0.86      0.86        44&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;### AdaBoostClassifier&lt;/span&gt;
+    &lt;span class="n"&gt;precision&lt;/span&gt;    &lt;span class="n"&gt;recall&lt;/span&gt;  &lt;span class="n"&gt;f1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;score&lt;/span&gt;   &lt;span class="n"&gt;support&lt;/span&gt;
+
+      &lt;span class="bp"&gt;False&lt;/span&gt;       &lt;span class="mf"&gt;0.95&lt;/span&gt;      &lt;span class="mf"&gt;0.93&lt;/span&gt;      &lt;span class="mf"&gt;0.94&lt;/span&gt;        &lt;span class="mi"&gt;40&lt;/span&gt;
+       &lt;span class="bp"&gt;True&lt;/span&gt;       &lt;span class="mf"&gt;0.40&lt;/span&gt;      &lt;span class="mf"&gt;0.50&lt;/span&gt;      &lt;span class="mf"&gt;0.44&lt;/span&gt;         &lt;span class="mi"&gt;4&lt;/span&gt;
+
+&lt;span class="n"&gt;avg&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;total&lt;/span&gt;       &lt;span class="mf"&gt;0.90&lt;/span&gt;      &lt;span class="mf"&gt;0.89&lt;/span&gt;      &lt;span class="mf"&gt;0.89&lt;/span&gt;        &lt;span class="mi"&gt;44&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;  &lt;span class="c1"&gt;####SVC&lt;/span&gt;
+    &lt;span class="n"&gt;precision&lt;/span&gt;    &lt;span class="n"&gt;recall&lt;/span&gt;  &lt;span class="n"&gt;f1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;score&lt;/span&gt;   &lt;span class="n"&gt;support&lt;/span&gt;
+
+      &lt;span class="bp"&gt;False&lt;/span&gt;       &lt;span class="mf"&gt;0.92&lt;/span&gt;      &lt;span class="mf"&gt;0.88&lt;/span&gt;      &lt;span class="mf"&gt;0.90&lt;/span&gt;        &lt;span class="mi"&gt;40&lt;/span&gt;
+       &lt;span class="bp"&gt;True&lt;/span&gt;       &lt;span class="mf"&gt;0.17&lt;/span&gt;      &lt;span class="mf"&gt;0.25&lt;/span&gt;      &lt;span class="mf"&gt;0.20&lt;/span&gt;         &lt;span class="mi"&gt;4&lt;/span&gt;
+
+&lt;span class="n"&gt;avg&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;total&lt;/span&gt;       &lt;span class="mf"&gt;0.85&lt;/span&gt;      &lt;span class="mf"&gt;0.82&lt;/span&gt;      &lt;span class="mf"&gt;0.83&lt;/span&gt;        &lt;span class="mi"&gt;44&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;###GaussianNB&lt;/span&gt;
+       &lt;span class="n"&gt;precision&lt;/span&gt;    &lt;span class="n"&gt;recall&lt;/span&gt;  &lt;span class="n"&gt;f1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;score&lt;/span&gt;   &lt;span class="n"&gt;support&lt;/span&gt;
+
+      &lt;span class="bp"&gt;False&lt;/span&gt;       &lt;span class="mf"&gt;0.91&lt;/span&gt;      &lt;span class="mf"&gt;0.97&lt;/span&gt;      &lt;span class="mf"&gt;0.94&lt;/span&gt;        &lt;span class="mi"&gt;40&lt;/span&gt;
+       &lt;span class="bp"&gt;True&lt;/span&gt;       &lt;span class="mf"&gt;0.00&lt;/span&gt;      &lt;span class="mf"&gt;0.00&lt;/span&gt;      &lt;span class="mf"&gt;0.00&lt;/span&gt;         &lt;span class="mi"&gt;4&lt;/span&gt;
+
+&lt;span class="n"&gt;avg&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;total&lt;/span&gt;       &lt;span class="mf"&gt;0.82&lt;/span&gt;      &lt;span class="mf"&gt;0.89&lt;/span&gt;      &lt;span class="mf"&gt;0.85&lt;/span&gt;        &lt;span class="mi"&gt;44&lt;/span&gt;
+
+&lt;span class="c1"&gt;### I am very confused on why it can not predict a single true POI, as I have seen people using this algorithm on the discussion&lt;/span&gt;
+&lt;span class="c1"&gt;### forum, I did some work to remove some features and try this algorithm seperately but still very poor performence, the &lt;/span&gt;
+&lt;span class="c1"&gt;### process is not recorded properly as I have just did it in the console and lost the record after. Any insight why this &lt;/span&gt;
+&lt;span class="c1"&gt;### classifier work so bad?&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;### AdaBoostClassifier&lt;/span&gt;
+  &lt;span class="n"&gt;precision&lt;/span&gt;    &lt;span class="n"&gt;recall&lt;/span&gt;  &lt;span class="n"&gt;f1&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;score&lt;/span&gt;   &lt;span class="n"&gt;support&lt;/span&gt;
+
+        &lt;span class="mf"&gt;0.0&lt;/span&gt;       &lt;span class="mf"&gt;0.97&lt;/span&gt;      &lt;span class="mf"&gt;0.93&lt;/span&gt;      &lt;span class="mf"&gt;0.95&lt;/span&gt;        &lt;span class="mi"&gt;40&lt;/span&gt;
+        &lt;span class="mf"&gt;1.0&lt;/span&gt;       &lt;span class="mf"&gt;0.50&lt;/span&gt;      &lt;span class="mf"&gt;0.75&lt;/span&gt;      &lt;span class="mf"&gt;0.60&lt;/span&gt;         &lt;span class="mi"&gt;4&lt;/span&gt;
+
+&lt;span class="n"&gt;avg&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;total&lt;/span&gt;       &lt;span class="mf"&gt;0.93&lt;/span&gt;      &lt;span class="mf"&gt;0.91&lt;/span&gt;      &lt;span class="mf"&gt;0.92&lt;/span&gt;        &lt;span class="mi"&gt;44&lt;/span&gt;
+&lt;span class="c1"&gt;## As the performence is the best among the classifiers, therefore I choose it.&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h4&gt;What does it mean to tune the parameters of an algorithm, and what can happen if you don’t do this well?  How did you tune the parameters of your particular algorithm? (Some algorithms do not have parameters that you need to tune -- if this is the case for the one you picked, identify and briefly explain how you would have done it for the model that was not your final choice or a different model that does utilize parameter tuning, e.g. a decision tree classifier).  [relevant rubric item: “tune the algorithm”]&lt;/h4&gt;
+&lt;p&gt;Tuning the parameters is analogous to tune a TV cable, you may fail to watch the tv channel if you do not do so, or get bad quality. It is important to fine tune the classifier to maximize the performence. I use GridSearchCV did a lot of testing on max depth, imputer, learning rate, pca  and selectedKbest features.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h4&gt;What is validation, and what’s a classic mistake you can make if you do it wrong? How did you validate your analysis?  [relevant rubric item: “validation strategy”]&lt;/h4&gt;
+&lt;p&gt;Classic mistake is overfitting the model, if a cross-validation test is not used, you can always get a classifier that have 100% accuracy, as it is basically doing an exam with answer provided. &lt;/p&gt;
+&lt;p&gt;First,70% data is split as training data and 30% data is testing data. Then a Stratifiedshufflesplit it used to split the training set to training and testing set(cross-validation set), the testing set is the cross validation set that the gridsearchCV selected the best parameter base on data train and predict in the validation set.
+The best estimator is then used to submit to the grader for final testing.&lt;/p&gt;
+&lt;p&gt;StratifiedShuffleSplit is used because the dataset is relatively small and POI is only accounted for a small number. A StratifiedShuffleSplit is to make sure the training set have POI in it by keeping the percentage of class as otherwise it can rate bad classifier which always classify Non-POI as a good classifier.&lt;/p&gt;
+&lt;p&gt;If no cross-validation is done, you can always overfitting by trial and error and you eventually get a classifier that can predict accurately on the particular testing set but which is very likely not working to future data.&lt;/p&gt;
+&lt;p&gt;For recall and precision, I take the performence of my selected classifier as an example.
+Precision and recall both take the range [0 1].
+Precision = True positive/ ( True Positive + False Positive)
+Recall = True positive/ ( True Positive + False Negative)&lt;/p&gt;
+&lt;p&gt;For precision, it is a summary on the classifier where the proportion of True classification is right. In the example, precision =0.402 means  when 100 True classifications is made, 40.2 is positive true classification.&lt;/p&gt;
+&lt;p&gt;For recall, it is a summary on the classifier where the proportion of True classification is predicted by the classifier. in th eexample, recall = 0.331. It mean when there are 100 True labels, 33.1 of them will be picked up by the classifier.&lt;/p&gt;
+&lt;p&gt;A high precision indicate that whenever the classifier make a True classification, it is very likely to be correct.
+A high recall indicate that the classifier is able to classify most of the positive True labels from the data.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;### AdaBoostClassifier&lt;/span&gt;
+&lt;span class="n"&gt;Accuracy&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mf"&gt;0.84527&lt;/span&gt;   &lt;span class="n"&gt;Precision&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mf"&gt;0.40243&lt;/span&gt;  &lt;span class="n"&gt;Recall&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mf"&gt;0.33100&lt;/span&gt; &lt;span class="n"&gt;F1&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mf"&gt;0.36324&lt;/span&gt; &lt;span class="n"&gt;F2&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mf"&gt;0.34318&lt;/span&gt;
+    &lt;span class="n"&gt;Total&lt;/span&gt; &lt;span class="n"&gt;predictions&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;15000&lt;/span&gt;    &lt;span class="bp"&gt;True&lt;/span&gt; &lt;span class="n"&gt;positives&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;  &lt;span class="mi"&gt;662&lt;/span&gt;    &lt;span class="bp"&gt;False&lt;/span&gt; &lt;span class="n"&gt;positives&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;  &lt;span class="mi"&gt;983&lt;/span&gt;   &lt;span class="bp"&gt;False&lt;/span&gt; &lt;span class="n"&gt;negatives&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;1338&lt;/span&gt;   &lt;span class="bp"&gt;True&lt;/span&gt; &lt;span class="n"&gt;negatives&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;12017&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary></entry></feed>
